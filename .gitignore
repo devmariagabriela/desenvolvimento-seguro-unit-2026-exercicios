@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
+
+# NUNCA versionar
+*.db
+*.sqlite
+*.jks
+*.keystore
+key.properties
+.env
+google-services.json
+GoogleService-Info.plist

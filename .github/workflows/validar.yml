@@ -1,0 +1,110 @@
+name: Validar entrega
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Nesta disciplina esta barreira e conteudo, nao burocracia:
+      # enviar banco de dados ou segredo para repositorio publico e
+      # exatamente o erro que a materia estuda.
+      - name: Bloquear dados e segredos versionados
+        id: segredos
+        run: |
+          BASE="origin/${{ github.event.pull_request.base.ref }}"
+          ACHADOS=$(git diff --name-only "$BASE"...HEAD | grep -iE \
+            '(\.db$|\.sqlite$|\.sqlite3$|\.jks$|\.keystore$|key\.properties$|(^|/)\.env$|google-services\.json|GoogleService-Info\.plist)' || true)
+          if [ -n "$ACHADOS" ]; then
+            echo "achados<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$ACHADOS"   >> "$GITHUB_OUTPUT"
+            echo "EOF"        >> "$GITHUB_OUTPUT"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Descobrir pastas alteradas
+        id: alvo
+        run: |
+          BASE="origin/${{ github.event.pull_request.base.ref }}"
+          PASTAS=$(git diff --name-only "$BASE"...HEAD \
+                    | grep -oE '^exercicios/aula[0-9]{2}' | sort -u | tr '\n' ' ')
+          echo "pastas=$PASTAS" >> "$GITHUB_OUTPUT"
+          [ -z "$PASTAS" ] && echo "vazio=true" >> "$GITHUB_OUTPUT" \
+                           || echo "vazio=false" >> "$GITHUB_OUTPUT"
+
+      - name: Verificar título e RESPOSTAS.md
+        id: forma
+        if: steps.alvo.outputs.vazio == 'false'
+        env:
+          TITULO: ${{ github.event.pull_request.title }}
+        run: |
+          if echo "$TITULO" | grep -qE '^\[(Aula [0-9]{2}|Seguro S[1-5])\] .+'; then
+            echo "titulo=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "titulo=false" >> "$GITHUB_OUTPUT"
+          fi
+          FALTANDO=""
+          for P in ${{ steps.alvo.outputs.pastas }}; do
+            [ -f "$P/RESPOSTAS.md" ] || FALTANDO="$FALTANDO $P"
+          done
+          echo "faltando=$FALTANDO" >> "$GITHUB_OUTPUT"
+          [ -z "$FALTANDO" ] && echo "respostas=true" >> "$GITHUB_OUTPUT" \
+                             || echo "respostas=false" >> "$GITHUB_OUTPUT"
+
+      - name: Comentar no pull request
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          SEG_OK:   ${{ steps.segredos.outputs.ok }}
+          SEG:      ${{ steps.segredos.outputs.achados }}
+          VAZIO:    ${{ steps.alvo.outputs.vazio }}
+          PASTAS:   ${{ steps.alvo.outputs.pastas }}
+          TITULO:   ${{ steps.forma.outputs.titulo }}
+          RESP:     ${{ steps.forma.outputs.respostas }}
+          RESP_F:   ${{ steps.forma.outputs.faltando }}
+        with:
+          script: |
+            const e = process.env;
+            const L = ['## Verificação automática da entrega', ''];
+            if (e.SEG_OK === 'false') {
+              L.push('## 🔴 Dado ou segredo versionado — entrega bloqueada', '');
+              L.push('Os arquivos abaixo não podem entrar em repositório público:', '', '```', e.SEG.trim(), '```', '');
+              L.push('**Como corrigir:**', '',
+                     '1. `git rm --cached <arquivo>`',
+                     '2. confirme que o `.gitignore` cobre o padrão',
+                     '3. commit e push novamente', '');
+              L.push('> Se o arquivo contém dado real, considere-o vazado: o histórico do Git preserva o conteúdo mesmo após a remoção. Esse é precisamente o mecanismo estudado na disciplina.');
+            } else if (e.VAZIO === 'true') {
+              L.push('Nenhuma pasta de exercício foi alterada neste pull request.', '',
+                     'Verifique se os arquivos estão dentro de `exercicios/aulaNN/`.');
+            } else {
+              L.push(`Pastas avaliadas: \`${e.PASTAS.trim()}\``, '');
+              L.push('| Item | Resultado |', '|---|---|');
+              L.push('| Dados e segredos | nenhum versionado |');
+              L.push(`| Título do pull request | ${e.TITULO === 'true' ? 'no padrão' : 'fora do padrão `[Aula NN] Seu Nome`'} |`);
+              L.push(`| \`RESPOSTAS.md\` | ${e.RESP === 'true' ? 'presente' : 'ausente em `' + (e.RESP_F||'').trim() + '`'} |`);
+              L.push('');
+              L.push('A verificação automática cobre apenas forma. A correção pelos critérios da disciplina — corretude 35, justificativa 30, artefatos e evidências 25, clareza 10 — é manual.');
+            }
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number, owner: context.repo.owner,
+              repo: context.repo.repo, body: L.join('\n'),
+            });
+
+      - name: Falhar se houver segredo ou erro de forma
+        if: |
+          steps.segredos.outputs.ok == 'false' ||
+          (steps.alvo.outputs.vazio == 'false' && steps.forma.outputs.respostas == 'false')
+        run: exit 1
