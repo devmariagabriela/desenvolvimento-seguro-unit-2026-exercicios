@@ -4,20 +4,20 @@
 
 **Critério de classificação:** Alta: dados pessoais, credenciais ou informações cuja exposição pode causar danos significativos. Média: informações operacionais cuja alteração ou indisponibilidade prejudica o serviço. Baixa: informações públicas ou de impacto reduzido.
 
-| ID | Ativo | Localização prevista no cenário | Responsável pelos dados | Valor para a operação | Sensibilidade |
+| ID | Ativo | Localização prevista no cenário | Titular do dado (pessoa a quem se refere) | Valor para a operação | Sensibilidade |
 |---|---|---|---|---|---|
-| AT-01 | Banco SQLite de visitas | Armazenamento local do dispositivo | Organização responsável pelas visitas | Permite consultar e registrar atividades offline | Alta |
-| AT-02 | Dados cadastrais dos clientes | Banco local e/ou servidor | Organização responsável pelo cadastro | Identifica os clientes atendidos | Alta |
-| AT-03 | Token de sessão do técnico | Armazenamento de sessão do aplicativo | Equipe responsável pela autenticação | Autoriza o acesso ao sistema | Alta |
-| AT-04 | Histórico agregado de visitas | Banco MySQL do servidor | Organização responsável pelas visitas | Permite auditoria, relatórios e acompanhamento das atividades | Alta |
-| AT-05 | Registros de presença e horários | Banco local e/ou servidor | Organização responsável pelas visitas | Comprova a realização dos atendimentos | Média |
-| AT-06 | Fotografias das visitas | Armazenamento local e/ou remoto | Organização responsável pelas visitas | Fornece evidências das atividades executadas | Alta |
-| AT-07 | Credenciais dos usuários | Serviço de autenticação | Organização responsável pelo controle de acesso | Protege a identidade e o acesso dos técnicos | Alta |
-| AT-08 | Registros de sincronização | Aplicativo e/ou servidor | Equipe responsável pela operação | Ajuda a identificar falhas e conflitos de dados | Média |
-| AT-09 | Configurações de comunicação com a API | Aplicativo móvel | Equipe de desenvolvimento | Permite a comunicação entre aplicativo e servidor | Média |
-| AT-10 | Logs de operação e segurança | Aplicativo e/ou servidor | Equipe responsável pela operação | Auxilia no diagnóstico e na investigação de incidentes | Alta |
+| AT-01 | Banco SQLite de visitas | Armazenamento local do dispositivo | Clientes e técnicos identificados nos registros | Permite consultar e registrar atividades offline | Alta |
+| AT-02 | Dados cadastrais dos clientes | Banco local e/ou servidor | Clientes cadastrados | Identifica os clientes atendidos | Alta |
+| AT-03 | Token de sessão do técnico | Armazenamento de sessão do aplicativo | Técnico autenticado | Autoriza o acesso ao sistema | Alta |
+| AT-04 | Histórico agregado de visitas | Banco MySQL do servidor | Clientes e técnicos identificados nos registros | Permite auditoria, relatórios e acompanhamento das atividades | Alta |
+| AT-05 | Registros de presença e horários | Banco local e/ou servidor | Técnicos e clientes identificados nos registros | Comprova a realização dos atendimentos | Média |
+| AT-06 | Fotografias das visitas | Armazenamento local e/ou remoto | Pessoas identificáveis nas imagens | Fornece evidências das atividades executadas | Alta |
+| AT-07 | Credenciais dos usuários | Serviço de autenticação | Técnicos e demais usuários cadastrados | Protege a identidade e o acesso dos técnicos | Alta |
+| AT-08 | Registros de sincronização | Aplicativo e/ou servidor | Técnicos e clientes, quando identificáveis | Ajuda a identificar falhas e conflitos de dados | Média |
+| AT-09 | Configurações de comunicação com a API | Aplicativo móvel | Não se aplica a parâmetros técnicos sem dados pessoais | Permite a comunicação entre aplicativo e servidor | Média |
+| AT-10 | Logs de operação e segurança | Aplicativo e/ou servidor | Técnicos e clientes, quando identificáveis | Auxilia no diagnóstico e na investigação de incidentes | Alta |
 
-**Observação:** Este é um inventário preliminar baseado no cenário descrito no exercício. As localizações e os ativos devem ser confirmados na implementação real do Checkpoint antes da entrega.
+**Distinção jurídica:** titular é a pessoa natural a quem o dado pessoal se refere; a organização que determina o tratamento é controladora, não titular. Para informações puramente técnicas, o campo é não aplicável.\n\n**Observação:** Este é um inventário preliminar baseado no cenário descrito no exercício. As localizações e os ativos devem ser confirmados na implementação real do Checkpoint antes da entrega.
 
 ## D2 — Proteções e custos
 ### AT-01 — Banco SQLite de visitas
