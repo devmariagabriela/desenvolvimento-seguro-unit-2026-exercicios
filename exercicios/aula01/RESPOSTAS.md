@@ -105,18 +105,78 @@ Recomendo substituir essa medida por criptografia dos dados locais, proteção d
 
 ## Parte E — Redação de achados
 
-### E1 — Análise dos achados
+### E1 — Reescrita dos achados
 
-*Pendente: analisar os achados e documentar vulnerabilidades, impactos e passos de reprodução com base no aplicativo autorizado.*
+**Escopo e limite:** os itens abaixo são modelos de achados verificáveis para o Checkpoint, não afirmações de que uma vulnerabilidade já foi comprovada. O repositório-base do professor usa armazenamento em memória no marco M1; a implementação SQLite e a sincronização são marcos posteriores. É necessário testar a versão instalada pela própria equipe antes de marcar qualquer item como confirmado.
+
+**a) Possível exposição do banco de visitas local (condicional ao resultado da E2)**
+
+- **Ativo:** banco SQLite local e dados das visitas e dos clientes.
+- **Vulnerabilidade a verificar:** armazenamento de dados sensíveis em SQLite sem criptografia ou sem proteção suficiente para o cenário de acesso ao arquivo.
+- **Impacto concreto:** quem obtiver uma cópia do banco poderá ler nomes, endereços, horários ou observações de visitas, caso esses campos estejam presentes e legíveis.
+- **Reprodução autorizada:** (1) instalar a versão da equipe em emulador ou aparelho de teste; (2) criar visitas fictícias; (3) identificar o pacote com `adb shell pm list packages | grep checkpoint`; (4) tentar exportar o banco da própria instalação usando `run-as` em versão depurável; (5) abrir a cópia no DB Browser for SQLite; (6) anotar quais campos aparecem e se houve solicitação de senha. **Não afirmar a vulnerabilidade se o banco não existir, a extração falhar ou o conteúdo estiver protegido.**
+- **Status:** não verificado; depende da E2.
+
+**b) Possível fragilidade na autenticação ou na comunicação com a API**
+
+- **Ativo:** sessão do técnico, credenciais e registros de visita acessados pela API.
+- **Vulnerabilidade a verificar:** ausência de validação adequada do certificado TLS ou de autorização no acesso às visitas; não há comprovação dessa falha no repositório-base M1.
+- **Impacto concreto:** se uma dessas falhas existir, poderá ocorrer exposição do token ou acesso a visitas de outro usuário.
+- **Reprodução autorizada:** (1) usar apenas a API e as contas de teste da própria equipe; (2) inspecionar a configuração do cliente HTTP e a validação de certificados; (3) testar com contas fictícias de perfis diferentes se uma sessão consegue acessar dados que não lhe pertencem; (4) registrar resposta, versão e evidências com tokens ocultos. Não executar interceptação ou testes em serviços de terceiros.
+- **Status:** não verificado; depende da implementação M4/M5 e de testes da equipe.
+
+**c) Possível exposição de dados sensíveis nos logs**
+
+- **Ativo:** token de sessão, dados pessoais e registros de diagnóstico.
+- **Vulnerabilidade a verificar:** instruções de log que imprimam tokens, cabeçalhos `Authorization` ou corpos de requisições contendo dados pessoais.
+- **Impacto concreto:** pessoas com acesso aos registros de diagnóstico podem recuperar credenciais ou informações privadas.
+- **Reprodução autorizada:** (1) executar a versão de teste do Checkpoint; (2) autenticar com uma conta fictícia e realizar uma visita de teste; (3) examinar apenas os logs gerados pelo próprio aplicativo e servidor da equipe; (4) procurar nomes de cabeçalhos e dados fictícios, sem copiar segredos reais; (5) registrar arquivo, linha ou captura com informações ocultas, se houver exposição.
+- **Status:** não verificado; depende de logs efetivamente observados.
 
 ### E2 — Extração do banco SQLite
 
-*Pendente: executar o procedimento autorizado, registrar o resultado real e anexar a evidência sem expor dados pessoais.*
+**Resultado:** pendente de execução na versão instalada e autorizada do Checkpoint da equipe. A inspeção do repositório-base do professor não substitui o teste no aparelho; o README do projeto informa que o marco M1 utiliza um repositório em memória e que SQLite é implementado no M3.
+
+**Procedimento previsto para o laboratório:**
+
+```bash
+adb devices
+adb shell pm list packages | grep checkpoint
+# Confirme o nome real do pacote e o nome do banco antes de executar.
+adb exec-out run-as br.edu.unit.checkpoint \
+    cat databases/checkpoint.db > checkpoint.db
+```
+
+O comando `run-as` normalmente exige instalação depurável. Se o pacote ou banco forem diferentes, registrar a diferença; se a extração falhar, registrar a mensagem de erro, sem fabricar resultado. Abrir somente o arquivo de teste no DB Browser for SQLite.
+
+| Pergunta | Resposta |
+|---|---|
+| O arquivo abriu sem senha? | Não verificado — requer teste prático |
+| Quais campos são legíveis? | Não verificado — requer inspeção do banco |
+| Quantos registros havia? | Não verificado — requer contagem real |
+| Quanto tempo levou o procedimento inteiro? | Não verificado — cronometrar execução |
+
+**Evidência exigida:** `exercicios/aula01/evidencias/banco-extraido.png`, captura verdadeira do DB Browser com dados sensíveis ocultos. **Nunca adicionar `checkpoint.db`, arquivos `.sqlite` ou credenciais ao Git.**
 
 ## Parte F — Investigação de incidente real
 
-*Pendente: pesquisar e documentar um incidente real de segurança envolvendo aplicativo móvel, com fonte confiável.*
+**Caso: exposição de localizações pelo aplicativo Strava (2017–2018).**
+
+1. O Strava é um aplicativo móvel que registra corridas, caminhadas e outras atividades por GPS.
+2. Em novembro de 2017, a empresa disponibilizou um mapa de calor com atividades compartilhadas por usuários.
+3. Em janeiro de 2018, pesquisadores identificaram que o mapa permitia inferir posições de instalações militares.
+4. Em regiões pouco movimentadas, trajetos repetidos destacavam bases e rotas de deslocamento.
+5. O atributo da tríade CID principalmente comprometido foi a **confidencialidade**.
+6. A exposição ocorreu por uma decisão de produto e privacidade no tratamento e na publicação de dados agregados.
+7. Não há necessidade de supor invasão de servidores ou roubo de senhas para explicar o incidente.
+8. A ameaça foi a possibilidade de terceiros correlacionarem dados públicos para descobrir informações sensíveis.
+9. Usuários do aplicativo, inclusive militares, podiam ter suas rotinas e localizações inferidas.
+10. Não foi divulgado um número preciso de pessoas efetivamente prejudicadas por essa exposição.
+11. Como consequência, o Departamento de Defesa dos EUA revisou orientações sobre o uso de dispositivos e aplicativos de localização.
+12. O Strava anunciou restrições ao detalhamento e ao acesso ao mapa de calor em março de 2018.
+13. O caso demonstra que anonimização e agregação não garantem privacidade quando padrões de localização permitem inferências.
+14. **Fontes:** Reuters (13/03/2018): https://uk.investing.com/news/world-news/exclusive--fitness-app-strava-overhauls-map-that-revealed-military-positions-1077575 ; Privacy International (29/01/2018): https://privacyinternational.org/examples/1946/strava-fitness-app-exposes-jogging-routes-around-military-bases ; comunicado de senadores dos EUA (14/02/2018): https://www.coons.senate.gov/news/press-releases/sens-coons-flake-press-strava-ceo-on-privacy-data-security-failures-after-fitness-tracking-app-reveals-sensitive-information-of-us-military-service-members
 
 ## Declaração de uso de IA
 
-Utilizei o ChatGPT como ferramenta de apoio para organizar as respostas, revisar a redação e compreender conceitos de segurança da informação. As análises práticas e evidências do aplicativo deverão ser verificadas e documentadas a partir dos testes efetivamente realizados.
+Utilizei o ChatGPT como ferramenta de apoio para organizar as respostas, revisar a redação e compreender conceitos de segurança da informação. Também utilizei a ferramenta para estruturar modelos condicionais de achados e sintetizar fontes públicas do caso Strava. Nenhum teste dinâmico, extração de banco ou captura de evidência foi realizado por esta assistência; essas etapas devem ser executadas e registradas pela equipe.
